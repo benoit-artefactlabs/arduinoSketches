@@ -11,8 +11,8 @@
 
 // WiFi config // 90.A2.DA.0E.B5.A1
 int status = WL_IDLE_STATUS;
-char ssid[] = "artefactlabs-3";
-char pass[] = "nemesis75013";
+char ssid[] = "***";
+char pass[] = "***";
 //int keyIndex = 0; // your network key Index number (needed only for WEP)
 
 // ntp settings
@@ -44,6 +44,10 @@ void setupSerial() {
   }
 }
 
+void serialPrint() {
+  
+}
+
 void setupHardware() {
   pinMode(wfOkPin, OUTPUT);
   digitalWrite(wfOkPin, LOW);
@@ -55,7 +59,7 @@ void setupHardware() {
 void setupWf() {
   toggleWfStatus(0);
   if (WiFi.status() == WL_NO_SHIELD) {
-    Serial.println("WiFi shield not present");
+    //Serial.println("WiFi shield not present");
     while (true) {
       toggleWfStatus(1);
       delay(1000);
@@ -64,18 +68,18 @@ void setupWf() {
     }
   } 
   while (status != WL_CONNECTED) { 
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
+    //Serial.print("Attempting to connect to SSID: ");
+    //Serial.println(ssid);
     status = WiFi.begin(ssid, pass);
     delay(10000);
   }
-  Serial.println("Connected to wifi");
-  printWifiStatus();
+  //Serial.println("Connected to wifi");
+  //printWifiStatus();
   toggleWfStatus(1);
 }
 
 void toggleWfStatus(int toggle) {
-  Serial.println("Toggle WiFi status leds "+String(toggle));
+  //Serial.println("Toggle WiFi status leds "+String(toggle));
   if (toggle == 0) {
     digitalWrite(wfOkPin, LOW);
     digitalWrite(wfKoPin, HIGH);
@@ -87,7 +91,7 @@ void toggleWfStatus(int toggle) {
 }
 
 void setupNtp() {
-  Serial.println("\nStarting connection to server...");
+  //Serial.println("\nStarting connection to server...");
   Udp.begin(NTPLocalPort);
 }
 
@@ -149,9 +153,11 @@ String getTimeAndDateString() {
 }
 
 String getJsonMessage() {
-  return getTimeAndDateString();
-  //String ts = getTimeAndDateString();
-  //return String('{"type": "arduino", "timestamp": "'+'ts'+'"}');
+  //return getTimeAndDateString(); // OK !!!
+  String ts = getTimeAndDateString();
+  //String ms = String('{"type": "arduino", "timestamp": "'+'ts'+'"}');
+  String ms = String("{\"type\": \"arduino\", \"timestamp\": \""+ts+"\"}");
+  return ms;
 }
 
 // helper functions end -----------------------------------
@@ -177,14 +183,14 @@ void loop()
     while (!getTimeAndDate() && retry < 10) {
       retry++;
     }
-    if (retry < 10) {
+    /*if (retry < 10) {
       Serial.println("NTP OK");
     } else {
       Serial.println("NTP KO");
-    }
+    }*/
     if (now() != prevDisplay){
       prevDisplay = now();
-      Serial.println(getJsonMessage()); 
+      Serial.println(getJsonMessage()); // todo, send this to elasticsearch
     }
   }
 }
