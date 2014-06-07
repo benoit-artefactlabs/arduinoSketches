@@ -6,9 +6,12 @@
 // configuration begin ------------------------------------
 
 // ethernet
-// 90.A2.DA.0F.15.0E
-byte mac[] = {0x90, 0xA2, 0xDA, 0x0F, 0x15, 0x0E}; 
-byte ip[] = {192, 168, 1, 44}; // set the IP address to an unused address on your network
+// 90.A2.DA.0F.15.0E // wired
+// 90.A2.DA.0E.B5.A1 // wifi
+byte mac[] = {0x90, 0xA2, 0xDA, 0x0F, 0x15, 0x0E};
+EthernetClient client;
+//byte ip[] = {192, 168, 1, 44}; // set the IP address to an unused address on your network
+int DHCPStatus = 0;
 
 // time offset GMT +2
 const long timeZoneOffset = +7200L;
@@ -19,8 +22,9 @@ int localNTPPort = 2390;
 const int NTP_PACKET_SIZE= 48;
 byte packetBuffer[NTP_PACKET_SIZE];
 EthernetUDP Udp;
-int ntpSyncTime = 15;
+int ntpSyncTime = 30;
 unsigned long ntpLastUpdate = 0;
+time_t prevDisplay = 0;
 
 // digital out
 const int guardPin = 9;
@@ -48,21 +52,43 @@ float tempCMin = 19.0;
 
 // helper functions begin ---------------------------------
 
-void setupEthernet() {
-  int i = 0;
-   int DHCP = 0;
-   DHCP = Ethernet.begin(mac);
-   while( DHCP == 0 && i < 2){
-     delay(1000);
-     DHCP = Ethernet.begin(mac);
-     i++;
-   }
-   if(!DHCP){
-    Serial.println("DHCP OK");
-     for(;;);
-   }
-   Serial.println("DHCP KO");
-}
+/*void setupSerial() {
+  Serial.begin(9600);
+   while (!Serial) {
+    ;
+  }
+  Serial.println();
+}*/
+
+//void setupEthernet() {
+  /*int retry = 0;
+  int DHCP = 0;
+  DHCP = Ethernet.begin(mac);
+  /*while( DHCP == 0 && retry < 10){
+    delay(1000);
+    DHCP = Ethernet.begin(mac);
+    retry++;
+  }
+  if(!DHCP){
+    Serial.println("DHCP KO");
+    for(;;);
+  }
+  Serial.println("DHCP OK");*/
+  /*if (Ethernet.begin(mac) == 0) {
+    Serial.println("Failed to configure Ethernet using DHCP");
+    // no point in carrying on, so do nothing forevermore:
+    for(;;)
+      ;
+  }
+  Serial.print("IP: ");
+  for (byte thisByte = 0; thisByte < 4; thisByte++) {
+    // print the value of each byte of the IP address:
+    Serial.print(Ethernet.localIP()[thisByte], DEC);
+    Serial.print("."); 
+  }
+  Serial.println();
+  DHCPStatus = 1;*/
+//}
 
 void setupGuardAction() {
   pinMode(guardPin, OUTPUT);
@@ -173,43 +199,99 @@ unsigned long sendNTPpacket(IPAddress& address) {
   Udp.endPacket();
 }
 
+/*String getTimeAndDateString() {
+  String y = String(year());
+  String m = String(month());
+  String d = String(day());
+  String h = String(hour());
+  String i = String(minute());
+  String s = String(second());
+  return String(y+"-"+m+"-"+d+"T"+h+":"+i+":"+s+".000Z");
+}*/
+
+/*String getJsonMessage() {
+  String ts = getTimeAndDateString();
+  String gv = String(guardValue, DEC);
+  char TV[5];
+  dtostrf(tempValue, 5, 2, TV);
+  String tv = String(TV);
+  return String('{"type": "arduino", "timestamp": "'+'ts'+'", "guard": '+'gv'+', "temp": '+'tv'+'}');
+}*/
+
 // helper functions end -----------------------------------
 
 void setup() {
   Serial.begin(9600);
+   while (!Serial) {
+    ;
+  }
+  //Serial.println("SERIAL OK");
+  /*if (Ethernet.begin(mac) == 0) {
+    //Serial.println("DHCP KO");
+    for(;;)
+      ;
+  }*/
+  /*Serial.print("IP ");
+  for (byte thisByte = 0; thisByte < 4; thisByte++) {
+    // print the value of each byte of the IP address:
+    Serial.print(Ethernet.localIP()[thisByte], DEC);
+    Serial.print("."); 
+  }
+  Serial.println();*/
+  DHCPStatus = 1;
+  pinMode(4, OUTPUT);
+  pinMode(10, OUTPUT);
+  digitalWrite(4, HIGH);  // SD Card not active
+  digitalWrite(10, HIGH);
   setupGuardAction();
   setupTempAction();
+  Serial.println("test");
 }
 
 void loop() {
-  if (Serial.available() == frameLength) {
-    byte parts[frameLength];
-    int partsIndex = 0;
-    while(Serial.available()) {
-      parts[partsIndex] = Serial.read();
-      Serial.print(parts[partsIndex], HEX);
-      Serial.print(", ");
-      partsIndex++;
+  //if (DHCPStatus > 0) {
+    // update time
+    /*if (now()-ntpLastUpdate > ntpSyncTime) {
+      int retry = 0;
+      while (!getTimeAndDate() && retry < 10) {
+        retry++;
+      }
+      if (retry < 10) {
+        Serial.println("NTP OK");
+      } else {
+        Serial.println("NTP KO");
+      }
+      if( now() != prevDisplay){
+        prevDisplay = now();
+        Serial.println(getJsonMessage()); 
+      }
+    }*/
+    // update sensors
+    if (Serial.available() == frameLength) {
+      byte parts[frameLength];
+      int partsIndex = 0;
+      while (Serial.available()) {
+        parts[partsIndex] = Serial.read();
+        Serial.print(parts[partsIndex], HEX);
+        Serial.print(", ");
+        partsIndex++;
+      }
+      if (partsIndex == frameLength) {
+        Serial.print("XBEE FRAME OK");
+        // guard sensor
+        //int guardValue;
+        guardValue = getGuardValue(parts, frameLength);
+        guardAction(guardValue);
+        // temp sensor
+        //float tempValue;
+        tempValue = getTempValue(parts, frameLength);
+        tempAction(tempValue);
+      } else {
+        Serial.print("XBEE FRAME KO");
+      }
+      Serial.println();
+      //Serial.println(getJsonMessage());
+      //Serial.flush();
     }
-    if (partsIndex == frameLength) {
-      Serial.print("XBEE FRAME OK");
-      // guard sensor
-      //int guardValue;
-      guardValue = getGuardValue(parts, frameLength);
-      guardAction(guardValue);
-      // temp sensor
-      //float tempValue;
-      tempValue = getTempValue(parts, frameLength);
-      tempAction(tempValue);
-    } else {
-      Serial.print("XBEE FRAME KO");
-      setupGuardAction();
-      setupTempAction();
-    }
-    Serial.println();
-    Serial.flush();
-  } else {
-    setupGuardAction();
-    setupTempAction();
-  }
+  //}
 }
