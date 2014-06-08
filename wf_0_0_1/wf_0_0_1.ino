@@ -143,13 +143,28 @@ void printWifiStatus() {
   Serial.println(" dBm");
 }
 
+String getDigits(byte digits){
+  String _digits = "";
+  if(digits < 10) {
+    _digits = "0";
+  }
+  _digits = String(_digits+String(digits));
+  return _digits;
+}
+
 String getTimeAndDateString() {
-  String y = String(year());
+  /*String y = String(year());
   String m = String(month());
   String d = String(day());
   String h = String(hour());
   String i = String(minute());
-  String s = String(second());
+  String s = String(second());*/
+  String y = String(year());
+  String m = getDigits(month());
+  String d = getDigits(day());
+  String h = getDigits(hour());
+  String i = getDigits(minute());
+  String s = getDigits(second());
   return String(y+"-"+m+"-"+d+"T"+h+":"+i+":"+s+".000Z");
 }
 
