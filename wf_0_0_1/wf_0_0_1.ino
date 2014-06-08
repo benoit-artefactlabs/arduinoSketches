@@ -1,5 +1,6 @@
 // include libraries begin --------------------------------
 
+#include "parameters.h"
 #include <SPI.h>
 #include <Time.h>
 #include <WiFi.h>
@@ -11,8 +12,8 @@
 
 // WiFi config // 90.A2.DA.0E.B5.A1
 int status = WL_IDLE_STATUS;
-char ssid[] = "***";
-char pass[] = "***";
+char ssid[] = wfSSID;
+char pass[] = wfPWD;
 //int keyIndex = 0; // your network key Index number (needed only for WEP)
 
 // ntp settings
