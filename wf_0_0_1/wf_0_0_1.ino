@@ -169,9 +169,7 @@ String getTimeAndDateString() {
 }
 
 String getJsonMessage() {
-  //return getTimeAndDateString(); // OK !!!
   String ts = getTimeAndDateString();
-  //String ms = String('{"type": "arduino", "timestamp": "'+'ts'+'"}');
   String ms = String("{\"type\": \"arduino\", \"timestamp\": \""+ts+"\"}");
   return ms;
 }
