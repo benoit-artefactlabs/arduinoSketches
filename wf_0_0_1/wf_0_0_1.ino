@@ -229,6 +229,9 @@ void sendHttpRequest() {
     client.println();
     client.println(data);
     client.println();
+    delay(1000);
+    client.flush();
+    client.stop();
   }
 }
 
