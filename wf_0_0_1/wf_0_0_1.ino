@@ -198,7 +198,7 @@ String getCt0Status() {
 }
 
 String getJsonMessage() {
-  return String("{\"arduino_type\":\"xb_0_0_1\",\"homeId\":\""+getHomeId()+"\",\"ct0StatusText\":\""+getCt0StatusText()+"\",\"ct0Status\":"+getCt0Status()+",\"temperature\":"+getTemperature()+",\"luminosityText\":\""+getLuminosityText()+"\",\"luminosity\":\""+getLuminosity()+"\",\"@version\":\"1\",\"@timestamp\":\""+getTimeAndDateString()+"\"}");
+  return String("{\"arduino_type\":\"xb_0_0_1\",\"homeId\":\""+getHomeId()+"\",\"ct0StatusText\":\""+getCt0StatusText()+"\",\"ct0Status\":"+getCt0Status()+",\"temperature\":"+getTemperature()+",\"luminosityText\":\""+getLuminosityText()+"\",\"luminosity\":"+getLuminosity()+",\"@version\":\"1\",\"@timestamp\":\""+getTimeAndDateString()+"\"}");
 }
 
 String getESServerQuery() {
