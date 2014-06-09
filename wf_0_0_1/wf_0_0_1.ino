@@ -217,7 +217,7 @@ void sendHttpRequest() {
     String data = getJsonMessage();
     client.print("POST ");
     client.print(getESServerQuery());
-    client.println("  HTTP/1.1");
+    client.println(" HTTP/1.1");
     client.print("Host: ");
     client.println(wfESServer);
     client.print("User-Agent: ");
