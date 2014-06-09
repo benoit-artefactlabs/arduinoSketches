@@ -18,11 +18,17 @@ char pass[] = wfPWD;
 //int keyIndex = 0; // your network key Index number (needed only for WEP)
 
 // ntp settings
-IPAddress NTPServer(129, 6, 15, 28); // time.nist.gov NTP server
+//IPAddress NTPServer(129, 6, 15, 28); // time.nist.gov NTP server
+IPAddress NTPServer(wfNTPServer);
 byte packetBuffer[NTP_PACKET_SIZE];
 WiFiUDP Udp;
 unsigned long ntpLastUpdate = 0;
 time_t prevDisplay = 0;
+
+// ES settings
+char ESServer[] = wfESServer;
+int ESServerPort = wfESServerPort;
+WiFiClient client;
 
 // configuration end --------------------------------------
 
@@ -46,7 +52,7 @@ void setupHardware() {
 void setupWf() {
   toggleWfStatus(0);
   if (WiFi.status() == WL_NO_SHIELD) {
-    Serial.println("WiFi shield not present");
+    Serial.println(F("WiFi shield not present"));
     while (true) {
       toggleWfStatus(1);
       delay(1000);
@@ -55,18 +61,17 @@ void setupWf() {
     }
   } 
   while (status != WL_CONNECTED) { 
-    Serial.print("Attempting to connect to SSID: ");
+    Serial.print(F("Attempting to connect to SSID: "));
     Serial.println(ssid);
     status = WiFi.begin(ssid, pass);
     delay(10000);
   }
-  Serial.println("Connected to wifi");
+  Serial.println(F("Connected to wifi"));
   printWifiStatus();
   toggleWfStatus(1);
 }
 
 void toggleWfStatus(int toggle) {
-  //Serial.println("Toggle WiFi status leds "+String(toggle));
   if (toggle == 0) {
     digitalWrite(wfOkPin, LOW);
     digitalWrite(wfKoPin, HIGH);
@@ -78,13 +83,12 @@ void toggleWfStatus(int toggle) {
 }
 
 void setupNtp() {
-  Serial.println("\nStarting connection to server...");
+  Serial.println(F("Opening connection to NTP server"));
   Udp.begin(NTPLocalPort);
 }
 
 int getTimeAndDate() {
   int flag=0;
-  //Udp.begin(localNTPPort);
   sendNTPpacket(NTPServer);
   delay(1000);
   if (Udp.parsePacket()){
@@ -118,15 +122,15 @@ unsigned long sendNTPpacket(IPAddress& address)
 }
 
 void printWifiStatus() {
-  Serial.print("SSID: ");
+  Serial.print(F("SSID: "));
   Serial.println(WiFi.SSID());
   IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
+  Serial.print(F("IP Address: "));
   Serial.println(ip);
   long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
+  Serial.print(F("signal strength (RSSI):"));
   Serial.print(rssi);
-  Serial.println(" dBm");
+  Serial.println(F(" dBm"));
 }
 
 String getDigitsFromByte(byte digits){
@@ -144,7 +148,7 @@ String getDigitsFromFloat(float digits, int digitsLen, int digitsDec) {
 }
 
 String getTimeAndDateString() {
-  return String(String(year())+"-"+getDigitsFromByte(month())+"-"+getDigitsFromByte(day())+"T"+getDigitsFromByte(hour())+":"+getDigitsFromByte(minute())+":"+getDigitsFromByte(second())+".000Z");
+  return String(String(year())+"-"+getDigitsFromByte(month())+"-"+getDigitsFromByte(day())+"T"+getDigitsFromByte(hour())+":"+getDigitsFromByte(minute())+":"+getDigitsFromByte(second())+".550Z");
 }
 
 String getHomeId() {
@@ -157,7 +161,7 @@ String getTemperature() {
   return getDigitsFromFloat(tem, 5, 2);
 }
 
-String getLuminosity() {
+String getLuminosityText() {
   int L = analogRead(lumPin);
   if (L < 50) {
     return String("dark");
@@ -176,18 +180,56 @@ String getLuminosity() {
   }
 }
 
-byte getCt0Status() {
-  return digitalRead(ct0Pin);
+String getLuminosity() {
+  return String(analogRead(lumPin));
+}
+
+String getCt0StatusText() {
+  int cts = digitalRead(ct0Pin);
+  if (cts == 1) {
+    return String("opened");
+  } else {
+    return String("closed");
+  }
+}
+
+String getCt0Status() {
+  return String(digitalRead(ct0Pin));
 }
 
 String getJsonMessage() {
-  return String("{\"type\":\"arduino\",\"homeId\":\""+getHomeId()+"\",\"ct0\":\""+String(getCt0Status())+"\",\"temperature\":\""+getTemperature()+"\",\"luminosity\":\""+getLuminosity()+"\",\"timestamp\":\""+getTimeAndDateString()+"\"}");
+  return String("{\"arduino_type\":\"xb_0_0_1\",\"homeId\":\""+getHomeId()+"\",\"ct0StatusText\":\""+getCt0StatusText()+"\",\"ct0Status\":"+getCt0Status()+",\"temperature\":"+getTemperature()+",\"luminosityText\":\""+getLuminosityText()+"\",\"luminosity\":\""+getLuminosity()+"\",\"@version\":\"1\",\"@timestamp\":\""+getTimeAndDateString()+"\"}");
+}
+
+String getESServerQuery() {
+  return String("/caillaux-"+String(year())+"."+getDigitsFromByte(month())+"."+getDigitsFromByte(day())+"/arduino/");
 }
 
 void printFreeMemory() {
   Serial.print("freeMemory : ");
   Serial.print(freeMemory());
   Serial.println(" B");
+}
+
+void sendHttpRequest() {
+  Serial.println(F("Sending stats to server"));
+  if (client.connect(ESServer, ESServerPort)) {
+    String data = getJsonMessage();
+    client.print("POST ");
+    client.print(getESServerQuery());
+    client.println("  HTTP/1.1");
+    client.print("Host: ");
+    client.println(wfESServer);
+    client.print("User-Agent: ");
+    client.println(wfESClientUA);
+    client.println("Connection: close");
+    client.println("Content-Type: application/x-www-form-urlencoded;");
+    client.print("Content-Length: ");
+    client.println(data.length());
+    client.println();
+    client.println(data);
+    client.println();
+  }
 }
 
 // helper functions end -----------------------------------
@@ -215,8 +257,9 @@ void loop()
     }
     if (now() != prevDisplay){
       prevDisplay = now();
+      sendHttpRequest();
       Serial.println(getJsonMessage()); // todo, send this to elasticsearch
-      //printFreeMemory();
+      printFreeMemory();
     }
   }
   /*
