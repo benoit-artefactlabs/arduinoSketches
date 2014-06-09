@@ -5,6 +5,7 @@
 #include <Time.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include <MemoryFree.h>
 
 // include libraries end ----------------------------------
 
@@ -17,22 +18,11 @@ char pass[] = wfPWD;
 //int keyIndex = 0; // your network key Index number (needed only for WEP)
 
 // ntp settings
-const long timeZoneOffset = +7200L;
-unsigned int NTPLocalPort = 2390;
 IPAddress NTPServer(129, 6, 15, 28); // time.nist.gov NTP server
-const int NTP_PACKET_SIZE = 48;
 byte packetBuffer[NTP_PACKET_SIZE];
 WiFiUDP Udp;
-int ntpSyncTime = 30;
 unsigned long ntpLastUpdate = 0;
 time_t prevDisplay = 0;
-
-// Arduino config
-const int wfOkPin = 6;
-const int wfKoPin = 5;
-const int temPin = A0;
-const int lumPin = A1;
-const int ct0Pin = 2;
 
 // configuration end --------------------------------------
 
@@ -43,10 +33,6 @@ void setupSerial() {
   while (!Serial) {
     ;
   }
-}
-
-void serialPrint() {
-  
 }
 
 void setupHardware() {
@@ -60,7 +46,7 @@ void setupHardware() {
 void setupWf() {
   toggleWfStatus(0);
   if (WiFi.status() == WL_NO_SHIELD) {
-    //Serial.println("WiFi shield not present");
+    Serial.println("WiFi shield not present");
     while (true) {
       toggleWfStatus(1);
       delay(1000);
@@ -69,13 +55,13 @@ void setupWf() {
     }
   } 
   while (status != WL_CONNECTED) { 
-    //Serial.print("Attempting to connect to SSID: ");
-    //Serial.println(ssid);
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(ssid);
     status = WiFi.begin(ssid, pass);
     delay(10000);
   }
-  //Serial.println("Connected to wifi");
-  //printWifiStatus();
+  Serial.println("Connected to wifi");
+  printWifiStatus();
   toggleWfStatus(1);
 }
 
@@ -92,7 +78,7 @@ void toggleWfStatus(int toggle) {
 }
 
 void setupNtp() {
-  //Serial.println("\nStarting connection to server...");
+  Serial.println("\nStarting connection to server...");
   Udp.begin(NTPLocalPort);
 }
 
@@ -143,7 +129,7 @@ void printWifiStatus() {
   Serial.println(" dBm");
 }
 
-String getDigits(byte digits){
+String getDigitsFromByte(byte digits){
   String _digits = "";
   if(digits < 10) {
     _digits = "0";
@@ -152,26 +138,56 @@ String getDigits(byte digits){
   return _digits;
 }
 
+String getDigitsFromFloat(float digits, int digitsLen, int digitsDec) {
+  char DIGITS[digitsLen+1];
+  return String(dtostrf(digits, digitsLen, digitsDec, DIGITS));
+}
+
 String getTimeAndDateString() {
-  /*String y = String(year());
-  String m = String(month());
-  String d = String(day());
-  String h = String(hour());
-  String i = String(minute());
-  String s = String(second());*/
-  String y = String(year());
-  String m = getDigits(month());
-  String d = getDigits(day());
-  String h = getDigits(hour());
-  String i = getDigits(minute());
-  String s = getDigits(second());
-  return String(y+"-"+m+"-"+d+"T"+h+":"+i+":"+s+".000Z");
+  return String(String(year())+"-"+getDigitsFromByte(month())+"-"+getDigitsFromByte(day())+"T"+getDigitsFromByte(hour())+":"+getDigitsFromByte(minute())+":"+getDigitsFromByte(second())+".000Z");
+}
+
+String getHomeId() {
+  return homeId;
+}
+
+String getTemperature() {
+  char TEM[6];
+  float tem = (((analogRead(temPin)/1024.0)*5.0)-.5)*100;
+  return getDigitsFromFloat(tem, 5, 2);
+}
+
+String getLuminosity() {
+  int L = analogRead(lumPin);
+  if (L < 50) {
+    return String("dark");
+  }
+  else if (L <  200) {
+    return String("dim");
+  }
+  else if (L < 500) {
+    return String("light");
+  }
+  else if (L < 800) {
+    return String("bright");
+  }
+  else {
+    return String("intense");
+  }
+}
+
+byte getCt0Status() {
+  return digitalRead(ct0Pin);
 }
 
 String getJsonMessage() {
-  String ts = getTimeAndDateString();
-  String ms = String("{\"type\": \"arduino\", \"timestamp\": \""+ts+"\"}");
-  return ms;
+  return String("{\"type\":\"arduino\",\"homeId\":\""+getHomeId()+"\",\"ct0\":\""+String(getCt0Status())+"\",\"temperature\":\""+getTemperature()+"\",\"luminosity\":\""+getLuminosity()+"\",\"timestamp\":\""+getTimeAndDateString()+"\"}");
+}
+
+void printFreeMemory() {
+  Serial.print("freeMemory : ");
+  Serial.print(freeMemory());
+  Serial.println(" B");
 }
 
 // helper functions end -----------------------------------
@@ -197,16 +213,17 @@ void loop()
     while (!getTimeAndDate() && retry < 10) {
       retry++;
     }
-    /*if (retry < 10) {
-      Serial.println("NTP OK");
-    } else {
-      Serial.println("NTP KO");
-    }*/
     if (now() != prevDisplay){
       prevDisplay = now();
       Serial.println(getJsonMessage()); // todo, send this to elasticsearch
+      //printFreeMemory();
     }
   }
+  /*
+  Serial.println(getJsonMessage());
+  printFreeMemory();
+  delay(1000);
+  */
 }
 
 // main program loop end ----------------------------------
