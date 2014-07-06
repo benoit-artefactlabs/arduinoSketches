@@ -28,7 +28,7 @@ int offonoff[] = {0, 1, 0};
 int offoffon[] = {0, 0, 1};
 int offoffoff[] = {0, 0, 0};
 
-long pM = 0;
+unsigned long pM = 0;
 
 // configuration end --------------------------------------
 
@@ -47,10 +47,10 @@ void setupEthernet() {
     Serial.println("Failed to configure Ethernet using DHCP");
     //Ethernet.begin(mac, ip);
     DHCPStatus = 0;
-    return;
+  } else {
+    Serial.println("Configured Ethernet using DHCP");
+    DHCPStatus = 1;
   }
-  delay(1000);
-  DHCPStatus = 1;
 }
 
 void setupHardware() {
@@ -59,7 +59,6 @@ void setupHardware() {
     pinMode(k, OUTPUT);
     digitalWrite(k, LOW);
   }
-  delay(1000);
 }
 
 void printFreeMemory() {
@@ -68,9 +67,24 @@ void printFreeMemory() {
   Serial.println(" B");
 }
 
-void sendHttpRequest(jobname) {
+void sendHttpRequest(String jobname) {
   String ESClientPath = paramESClientPath;
-  ESClientPath.replace("JOBNAME", "</");
+  ESClientPath.replace(String("JOBNAME"), jobname);
+  
+  Serial.println(ESServer+String(":")+ESServerPort);
+  Serial.print("GET ");
+  Serial.print(ESClientPath);
+  Serial.println(" HTTP/1.1");
+  Serial.print("Host: ");
+  Serial.println(ESServer);
+  Serial.print("Authorization: Basic ");
+  Serial.println(paramESClientAuthRealm);
+  Serial.print("User-Agent: ");
+  Serial.println(paramESClientUA);
+  Serial.println("Connection: close");
+  Serial.println();
+  
+  /*
   Serial.println(F("Sending http request to server"));
   if (client.connect(ESServer, ESServerPort)) {
     client.print("GET ");
@@ -84,6 +98,7 @@ void sendHttpRequest(jobname) {
     client.println(paramESClientUA);
     client.println("Connection: close");
     client.println();
+    Serial.println("connection success");
     //delay(2000);
     //client.flush();
     //client.stop();
@@ -93,10 +108,11 @@ void sendHttpRequest(jobname) {
     //client.flush();
     //client.stop();
   }
+  */
 }
 
-void getJsonMessage() {
-  
+String getJsonMessage() {
+  return String("");
 }
 
 void actionLeds(int groupStates[], int groupMax) {
@@ -127,6 +143,7 @@ void setup()
   setupSerial();
   setupHardware();
   setupEthernet();
+  delay(1000);
 }
 
 // main program setup end ---------------------------------
@@ -136,14 +153,16 @@ void setup()
 void loop()
 {
   unsigned long cM = millis();
-  if (cM-Pm > ESClientWait*1000) {
-    Pm = cM;
+  if (cM-pM > ESClientWait*1000) {
+    pM = cM;
     String jobname = "artefactlabs";
     sendHttpRequest(jobname);
   } else {
     // wait
+    Serial.print("Wait");
+    Serial.println(cM-pM);
   }
-  
+  /*
   if (client.available()) {
     char c = client.read();
     Serial.print(c);
@@ -157,7 +176,7 @@ void loop()
     for(;;)
       ;
   }
-  
+  */
   /*
   actionLeds(ononon, 3); delay(1000);
   actionLeds(offoffoff, 3); delay(1000);
