@@ -30,6 +30,13 @@ int offoffoff[] = {0, 0, 0};
 
 unsigned long pM = 0;
 
+String httpResponse = "FAILED";
+/*
+char httpResponse[32];
+int httpResponsePos = 0;
+boolean httpResponseStartRead = false;
+*/
+
 // configuration end --------------------------------------
 
 // helper functions begin ---------------------------------
@@ -70,7 +77,7 @@ void printFreeMemory() {
 void sendHttpRequest(String jobname) {
   String ESClientPath = paramESClientPath;
   ESClientPath.replace(String("JOBNAME"), jobname);
-  
+  /*
   Serial.println(ESServer+String(":")+ESServerPort);
   Serial.print("GET ");
   Serial.print(ESClientPath);
@@ -83,8 +90,8 @@ void sendHttpRequest(String jobname) {
   Serial.println(paramESClientUA);
   Serial.println("Connection: close");
   Serial.println();
+  */
   
-  /*
   Serial.println(F("Sending http request to server"));
   if (client.connect(ESServer, ESServerPort)) {
     client.print("GET ");
@@ -108,8 +115,59 @@ void sendHttpRequest(String jobname) {
     //client.flush();
     //client.stop();
   }
-  */
+  
 }
+
+void readHttpResponse() {
+  if (client.connected()) {
+    /*if(client.find("\"result\"")){
+      if(client.find(":")){
+         httpResponse = client.readString();
+         Serial.print(httpResponse);
+         Serial.println(" on job");
+      }
+    } else {
+      Serial.println("result not found");
+    }*/
+    httpResponse = client.readString();
+    Serial.println(httpResponse);
+    client.stop();
+    client.flush();
+    //delay(10000); // check again in 10 seconds
+  } else {
+    Serial.println();
+    Serial.println("not connected");
+    client.stop();
+    client.flush();
+    //delay(1000);
+  }
+}
+
+/*
+String readHttpResponse() {
+  httpResponsePos = 0;
+  memset( &httpResponse, 0, 32 ); //clear httpResponse memory
+  while(true) {
+    if (client.available()) {
+      char c = client.read();
+      if (c == '{' ) {
+        httpResponseStartRead = true;
+      } else if (httpResponseStartRead) {
+        if (c != '}') {
+          httpResponse[httpResponsePos] = c;
+          httpResponsePos ++;
+        } else {
+          httpResponseStartRead = false;
+          client.stop();
+          client.flush();
+          Serial.println("disconnecting.");
+          return httpResponse;
+        }
+      }
+    }
+  }
+}
+*/
 
 String getJsonMessage() {
   return String("");
@@ -157,17 +215,41 @@ void loop()
     pM = cM;
     String jobname = "artefactlabs";
     sendHttpRequest(jobname);
+    readHttpResponse();
+    //Serial.println(httpResponse);
   } else {
     // wait
     Serial.print("Wait");
     Serial.println(cM-pM);
   }
   /*
+  if (client.connected()) {
+    if(client.find("<b>50 Kilometers")){
+      if(client.find("=")){
+         result = client.parseInt();
+         Serial.print("50 km is " );
+         Serial.print(result);
+         Serial.println(" miles");
+      }
+    } else {
+      Serial.println("result not found");
+    }
+    //char c = client.read();
+    //Serial.print(c);
+    client.stop();
+    delay(10000); // check again in 10 seconds
+  } else {
+    Serial.println();
+    Serial.println("not connected");
+    client.stop();
+    delay(1000);
+  }
+  */
+  /*
   if (client.available()) {
     char c = client.read();
     Serial.print(c);
   }
-
   if (!client.connected()) {
     Serial.println();
     Serial.println("disconnecting.");
@@ -186,7 +268,9 @@ void loop()
   */
   /*
   Serial.println(getJsonMessage());
-  printFreeMemory();
+  */
+  //printFreeMemory();
+  /*
   delay(1000);
   */
 }
