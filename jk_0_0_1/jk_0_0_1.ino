@@ -95,7 +95,7 @@ void sendHttpRequest(String jobname) {
   Serial.println(F("Sending http request to server"));
   if (client.connect(ESServer, ESServerPort)) {
     client.print("GET ");
-    client.print(paramESClientPath);
+    client.print(ESClientPath);
     client.println(" HTTP/1.1");
     client.print("Host: ");
     client.println(ESServer);
