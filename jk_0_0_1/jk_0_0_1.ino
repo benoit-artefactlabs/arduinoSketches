@@ -31,7 +31,7 @@ int offoffoff[] = {0, 0, 0};
 
 unsigned long pM = 0;
 
-String httpResponse = "FAILED";
+//String httpResponse = "FAILED";
 /*
 char httpResponse[32];
 int httpResponsePos = 0;
@@ -121,10 +121,20 @@ void sendHttpRequest(String jobname) {
   
 }
 
+String httpResponseHeaderLine;
+httpResponseHeaderLineNumber = 1;
 void readHttpResponse() {
   if (client.available()) {
     char c = client.read();
-    Serial.print(c);
+    if (c == "\n") {
+      // reset line
+      httpResponseHeaderLine = "";
+      httpResponseHeaderLineNumber++;
+    } else {
+      // fill line
+      httpResponseHeaderLine += c;
+    }
+    //Serial.print(c);
   }
   if (!client.connected() && ESClientLastConnected) {
     Serial.println();
@@ -184,8 +194,8 @@ void loop()
       sendHttpRequest(jobname);
     } else {
       // wait
-      Serial.print("Wait");
-      Serial.println(cM-pM);
+      //Serial.print("Wait");
+      //Serial.println(cM-pM);
     }
     
     ESClientLastConnected = client.connected();
