@@ -1,47 +1,30 @@
 // include libraries begin --------------------------------
-
 #include "parameters.h"
 #include <SPI.h>
 #include <Ethernet.h>
+#include <TextFinder.h>
 #include <MemoryFree.h>
-
 // include libraries end ----------------------------------
 
 // configuration begin ------------------------------------
-
-// ethernet
 // 90.A2.DA.0F.15.0E // wired
 // 90.A2.DA.0E.B5.A1 // wifi
 byte mac[] = {0x90, 0xA2, 0xDA, 0x0F, 0x15, 0x0E};
 EthernetClient client;
 //byte ip[] = {192, 168, 1, 44}; // set the IP address to an unused address on your network
-// ES settings
 char ESServer[] = paramESServer;
 int ESServerPort = paramESServerPort;
 int DHCPStatus = 0;
 int ESClientWait = paramESClientWait;
 boolean ESClientLastConnected = false;
-
+TextFinder finder(client);
 int leds[] = {paramLeds};
-int ononon[] = {1, 1, 1};
-int onoffoff[] = {1, 0, 0};
-int offonoff[] = {0, 1, 0};
-int offoffon[] = {0, 0, 1};
-int offoffoff[] = {0, 0, 0};
-
+char* jobs[] = {paramJobs};
 unsigned long pM = 0;
-
-//String httpResponse = "FAILED";
-/*
-char httpResponse[32];
-int httpResponsePos = 0;
-boolean httpResponseStartRead = false;
-*/
-
+boolean httpResponseSearchStatus = false; 
 // configuration end --------------------------------------
 
 // helper functions begin ---------------------------------
-
 void setupSerial() {
   Serial.begin(9600);
   while (!Serial) {
@@ -109,65 +92,95 @@ void sendHttpRequest(String jobname) {
     client.println("Connection: close");
     client.println();
     Serial.println("connection success");
-    //delay(2000);
-    //client.flush();
-    //client.stop();
   } else {
     Serial.println("connection failed");
     Serial.println("disconnecting.");
-    //client.flush();
+    client.flush();
     client.stop();
   }
   
 }
 
-String httpResponseHeaderLine;
-httpResponseHeaderLineNumber = 1;
+void resetHttpResponse() {
+  Serial.println("disconnecting.");
+  client.stop();
+  client.flush();
+  httpResponseSearchStatus = false;
+}
+
 void readHttpResponse() {
-  if (client.available()) {
-    char c = client.read();
-    if (c == "\n") {
-      // reset line
-      httpResponseHeaderLine = "";
-      httpResponseHeaderLineNumber++;
+  if (client.available() && !httpResponseSearchStatus) {
+    httpResponseSearchStatus = true;
+    int jobNameBufferLength = 32;
+    char jobName[jobNameBufferLength];
+    char jobNamePre[] = paramJobNamePre;
+    char jobNamePost[] = paramJobNamePost;
+    int jobNameLength = 0;
+    int jobStatusBufferLength = 10;
+    char jobStatus[jobStatusBufferLength];
+    char jobStatusPre[] = paramJobStatusPre;
+    char jobStatusPost[] = paramJobStatusPost;
+    int jobStatusLength = 0;
+    if( finder.find(paramHttpResponseOk) ) {
+      Serial.println("http response OK");
+      jobNameLength = finder.getString(jobNamePre, jobNamePost, jobName, jobNameBufferLength);
+      jobStatusLength = finder.getString(jobStatusPre, jobStatusPost, jobStatus, jobStatusBufferLength);
+      if (jobNameLength && jobStatusLength) {
+        Serial.println("http response format OK");
+        actionLedGroupToggle(decodeJobStatus(String(jobStatus)), decodeJobName(String(jobName)));
+      } else {
+        Serial.println("http response format KO");
+      }
     } else {
-      // fill line
-      httpResponseHeaderLine += c;
+      Serial.println("http response KO");
     }
-    //Serial.print(c);
+    resetHttpResponse();
   }
   if (!client.connected() && ESClientLastConnected) {
-    Serial.println();
-    Serial.println("disconnecting.");
-    client.stop();
+    resetHttpResponse();
   }
 }
 
-String getJsonMessage() {
-  return String("");
-}
-
-void actionLeds(int groupStates[], int groupMax) {
-    for (int k = 0; k < groupMax; k++) {
-      actionLedGroupToggle(groupStates[k], leds[k], groupMax);
+void actionLedGroupToggle(int state, int pin) {
+  Serial.println(String("state: ")+String(state)+String(", pin: ")+String(pin));
+  boolean authorizedPin = false;
+  for (int k = 0; k < paramLedsGroupsLength; k++) {
+    if (pin == leds[k]) {
+      authorizedPin = true;
+      break;
     }
-}
-
-void actionLedGroupToggle(int state, int pin, int offset) {
-  //Serial.println(String("state: ")+String(state)+String(", pin: ")+String(pin)+String(", offset: ")+String(offset));
-  if (state == 0) {
-    digitalWrite(pin, HIGH);
-    digitalWrite(pin+offset, LOW);
-  } else {
-    digitalWrite(pin, LOW);
-    digitalWrite(pin+offset, HIGH);
+  }
+  if (authorizedPin) {
+    if (state == 0) {
+      digitalWrite(pin, HIGH);
+      digitalWrite(pin+paramLedsGroupsLength, LOW);
+    } else {
+      digitalWrite(pin, LOW);
+      digitalWrite(pin+paramLedsGroupsLength, HIGH);
+    }
   }
 }
 
+int decodeJobName(String jobName) {
+  Serial.println(String("jobName: [")+jobName+String("]"));
+  for (int k = 0; k < paramJobsLength; k++) {
+    String _jobName = jobs[k];
+    if (jobName.startsWith(_jobName)) {
+      return leds[k];
+    }
+  }
+}
+
+int decodeJobStatus(String jobStatus) {
+  Serial.println(String("jobStatus: [")+jobStatus+String("]"));
+  if (jobStatus == "SUCCESS") {
+    return 1;
+  }
+  return 0;
+}
 // helper functions end -----------------------------------
 
 // main program setup begin -------------------------------
-
 void setup() 
 {
   setupSerial();
@@ -175,19 +188,14 @@ void setup()
   setupEthernet();
   delay(1000);
 }
-
 // main program setup end ---------------------------------
 
 // main program loop begin --------------------------------
-
 void loop()
 {
   if (DHCPStatus > 0) {
-    
     unsigned long cM = millis();
-    
     readHttpResponse();
-    
     if (cM-pM > ESClientWait*1000) {
       pM = cM;
       String jobname = "artefactlabs";
@@ -197,27 +205,8 @@ void loop()
       //Serial.print("Wait");
       //Serial.println(cM-pM);
     }
-    
     ESClientLastConnected = client.connected();
-    
   }
-  
-  
-  /*
-  actionLeds(ononon, 3); delay(1000);
-  actionLeds(offoffoff, 3); delay(1000);
-  actionLeds(onoffoff, 3); delay(1000);
-  actionLeds(offonoff, 3); delay(1000);
-  actionLeds(offoffon, 3); delay(1000);
-  */
-  /*
-  Serial.println(getJsonMessage());
-  */
-  //printFreeMemory();
-  /*
-  delay(1000);
-  */
 }
-
 // main program loop end ----------------------------------
 
