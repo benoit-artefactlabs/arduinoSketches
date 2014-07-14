@@ -17,6 +17,7 @@ int ESServerPort = paramESServerPort;
 int DHCPStatus = 0;
 int ESClientWait = paramESClientWait;
 boolean ESClientLastConnected = false;
+int currentJobIndex = 0;
 TextFinder finder(client);
 int leds[] = {paramLeds};
 char* jobs[] = {paramJobs};
@@ -56,6 +57,15 @@ void printFreeMemory() {
   Serial.print("freeMemory : ");
   Serial.print(freeMemory());
   Serial.println(" B");
+}
+
+void jobAction() {
+  sendHttpRequest(String(jobs[currentJobsIndex]));
+  if (currentJobsIndex+1 < paramJobsLength) {
+    currentJobsIndex++;
+  } else {
+    currentJobsIndex = 0;
+  }
 }
 
 void sendHttpRequest(String jobname) {
@@ -198,8 +208,9 @@ void loop()
     readHttpResponse();
     if (cM-pM > ESClientWait*1000) {
       pM = cM;
-      String jobname = "artefactlabs";
-      sendHttpRequest(jobname);
+      //String jobname = "artefactlabs";
+      //sendHttpRequest(jobname);
+      jobAction();
     } else {
       // wait
       //Serial.print("Wait");
