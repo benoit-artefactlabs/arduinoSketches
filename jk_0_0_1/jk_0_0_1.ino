@@ -60,11 +60,11 @@ void printFreeMemory() {
 }
 
 void jobAction() {
-  sendHttpRequest(String(jobs[currentJobsIndex]));
-  if (currentJobsIndex+1 < paramJobsLength) {
-    currentJobsIndex++;
+  sendHttpRequest(String(jobs[currentJobIndex]));
+  if (currentJobIndex+1 < paramJobsLength) {
+    currentJobIndex++;
   } else {
-    currentJobsIndex = 0;
+    currentJobIndex = 0;
   }
 }
 
