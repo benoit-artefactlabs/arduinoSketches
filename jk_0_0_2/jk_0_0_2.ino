@@ -171,16 +171,15 @@ void actionLedGroupToggle(int state, int pin) {
   // in order to work with several jobs monitoring
   boolean authorizedPin = true;
   if (authorizedPin) {
-    if (state == 0) {
-      //digitalWrite(pin, HIGH);
-      //digitalWrite(pin+paramLedsGroupsLength, LOW);
+    if (state == 2) {
       Serial.println("sending RED F720DF");
       irsend.sendNEC(0xF720DF, 32);
-    } else {
-      //digitalWrite(pin, LOW);
-      //digitalWrite(pin+paramLedsGroupsLength, HIGH);
+    } else if (state == 1) {
       Serial.println("sending GREEN F7A05F");
       irsend.sendNEC(0xF7A05F, 32);
+    } else {
+      Serial.println("sending FADE F53D9F1A");
+      irsend.sendNEC(0xF53D9F1A, 32);
     }
   }
 }
@@ -198,7 +197,9 @@ int decodeJobName(String jobName) {
 
 int decodeJobStatus(String jobStatus) {
   Serial.println(String("jobStatus: [")+jobStatus+String("]"));
-  if (jobStatus == "SUCCESS") {
+  if (jobStatus == "FAILURE") {
+    return 2;
+  } else if (jobStatus == "SUCCESS") {
     return 1;
   }
   return 0;
