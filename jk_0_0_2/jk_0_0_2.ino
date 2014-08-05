@@ -178,8 +178,8 @@ void actionLedGroupToggle(int state, int pin) {
       Serial.println("sending GREEN F7A05F");
       irsend.sendNEC(0xF7A05F, 32);
     } else {
-      Serial.println("sending FADE F53D9F1A");
-      irsend.sendNEC(0xF53D9F1A, 32);
+      Serial.println("sending SMOOTH F7E817");
+      irsend.sendNEC(0xF7E817, 32);
     }
   }
 }
