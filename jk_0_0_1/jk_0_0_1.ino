@@ -12,7 +12,8 @@
 byte mac[] = {0x90, 0xA2, 0xDA, 0x0F, 0x15, 0x0E};
 EthernetClient client;
 //byte ip[] = {192, 168, 1, 44}; // set the IP address to an unused address on your network
-char ESServer[] = paramESServer;
+//char ESServer[] = paramESServer;
+IPAddress ESServer(paramESServer);
 int ESServerPort = paramESServerPort;
 int DHCPStatus = 0;
 int ESClientWait = paramESClientWait;
@@ -95,8 +96,8 @@ void sendHttpRequest(String jobname) {
     client.println(" HTTP/1.1");
     client.print("Host: ");
     client.println(ESServer);
-    client.print("Authorization: Basic ");
-    client.println(paramESClientAuthRealm);
+    //client.print("Authorization: Basic ");
+    //client.println(paramESClientAuthRealm);
     client.print("User-Agent: ");
     client.println(paramESClientUA);
     client.println("Connection: close");
